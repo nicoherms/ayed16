@@ -1,0 +1,211 @@
+#include <iostream>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
+using namespace std;
+// Devuelve uno en caso de que sea primo
+short esPrimo(int num) {
+	if (num==0) {
+		return 0;
+	}
+	int divisor=1;
+	int cantDivisores=0;
+	int resultado;
+	while (divisor<=num) {
+		if (num%divisor==0) {
+			cantDivisores++;
+		}
+		divisor++;
+	}
+	if (cantDivisores>2) {
+		resultado=0;
+	} else {
+		resultado=1;
+	}
+	return resultado;
+}
+//Devuelve uno en caso de que sean coprimos
+short sonCoprimos(int num1,int num2) {
+	short res;
+	int mayor;
+	int menor;
+	int resto;
+	if (num1>num2) {
+		mayor=num1;
+		menor=num2;
+	} else {
+		mayor=num2;
+		menor=num1;
+	}
+	while (mayor%menor!=0) {
+		resto=mayor%menor;
+		mayor=menor;
+		menor=resto;
+	}
+	if (resto==1) {
+		res=1;
+	} else {
+		res=0;
+	}
+	return res;
+}
+//Devuelve el "fi" del numero pasado por parametro
+int euler(int num) {
+	int euler=1;
+	int divisorTemp=1;
+	int divisores[num];
+	int cantDivisores=0;
+	for (int w=0;w<=num;w++) {
+		divisores[w]=0;
+	}
+	while (divisorTemp<num) {
+		if (num%divisorTemp==0) {
+			divisores[cantDivisores]=divisorTemp;
+			cantDivisores++;
+		}
+		divisorTemp++;
+	}
+	for (int w=0;w<=cantDivisores-1;w++) {
+		if (divisores[w]!=1) {
+			euler=euler*(divisores[w]-1);
+		}
+	}
+	return euler;
+}
+//Hace (base^exponente)%modulo para exponentes =~ 1000
+/****
+Ligera explicación
+------------------
+
+Convierte el exponente a binario. Luego, lo escribe como suma de potencias de 2 y eleva la base a los exponentes como suma.
+Esta función limita como máximo exponente el 4, por lo tanto, potencias mayores a 4 son separadas en partes iguales.
+
+Ej:
+
+base=120
+exponente=17
+modulo=300
+
+binario(17) 	=	1  0 0 0 1
+	17			=	16+0+0+0+1
+base^exponente 	=	base^16*base^1
+
+Luego, saca el modulo de esas multiplicaciones sucesivas.
+
+****/
+int exp_modular(int base,int exponente,int modulo) {
+	int x=0;
+	double res=1;
+	while(exponente/2!=0) {
+		int exp_part = pow(2,x)*fmod(exponente,2);
+		if (exp_part/4>1) {
+			for (int y=0; y<(exp_part/4);y++) {
+				double potencia=pow(base,4);
+				int moduloIntermedio = fmod(potencia,modulo);
+				res=fmod(res*moduloIntermedio,modulo);
+			}
+		}
+		else {
+			res=fmod(res*fmod(pow(base,exp_part),modulo),modulo);
+		}
+		exponente=exponente/2;
+		x++;
+	}
+	if (fmod(exponente,2)==0) {
+		int exp_part=pow(2,x+1)*fmod(exponente,2);
+		if (exp_part/4>1) {
+			for (int y=0; y<(exp_part/4);y++) {
+				double potencia=pow(base,4);
+				int moduloIntermedio = fmod(potencia,modulo);
+				res=fmod(res*moduloIntermedio,modulo);
+			}
+		}
+		else {
+			res=fmod(res*fmod(pow(base,exp_part),modulo),modulo);
+		}
+	} else {
+		int exp_part=pow(2,x)*fmod(exponente,2);
+		if (exp_part/4>1) {
+			for (int y=0; y<(exp_part/4);y++) {
+				double potencia=pow(base,4);
+				int moduloIntermedio = fmod(potencia,modulo);
+				res=fmod(res*moduloIntermedio,modulo);
+			}
+		}
+		else {
+			res=fmod(res*fmod(pow(base,exp_part),modulo),modulo);
+		}
+	}
+	return res;
+}
+int crypt(int mensaje, int keyPublica, int modulo) {
+	return exp_modular(mensaje,keyPublica,modulo);
+}
+int decrypt(int c, int keyPrivada, int modulo) {
+	return exp_modular(c,keyPrivada,modulo);
+}
+//Devuelve un numero primo random entre 1 y 255
+int damePrimo() {
+	int primo;
+	srand(time(NULL));
+	primo=rand() % 255;
+	while (esPrimo(primo)!=1){
+		srand(time(NULL));
+		primo=rand() % 255;
+	}
+	return primo;
+}
+int main () {
+	int P = damePrimo();
+	while (P<10) {
+		P = damePrimo();
+	}
+	int Q = damePrimo();
+	while (P==Q||Q<10||(P<Q+10||P>Q-10)) {
+		Q = damePrimo();
+	}
+
+	cout <<"P:"<<P<<", Q:"<<Q<<endl;
+	int N = P*Q;
+	int eulerN=euler(N);
+	cout <<"N:"<<N<<endl;
+	srand(time(NULL));
+	int E = rand() % eulerN;
+	while (sonCoprimos(E,eulerN)==0) {
+		srand(time(NULL));
+		E = rand() % eulerN;
+	}
+	
+	cout << "E:" <<E<<endl;
+	int D = exp_modular(E,eulerN-1,eulerN);
+	cout <<"D:"<<D<<endl;
+
+	int x;
+	cout << "Ingrese numero a encriptar"<<endl;
+	cin >> x;
+	int c = crypt(x,E,N);
+	cout << "Encriptado: " << c <<endl;
+	cout << "Desencriptado: " <<  decrypt(c,D,N)<<endl;
+	
+
+	/******
+	
+	Algoritmo RSA:
+
+	*Encripta unicamente numeros menores a N*
+	
+	Seeds = P y Q
+	Keys = E y D
+	Modulo = N
+	
+	P = nro primo random
+	Q = nro primo random
+	N = P*Q
+
+	E = E < euler(N) && sonCoprimos(E,euler(N)) == true
+	D = (E^(euler(N)-1))%euler(N)
+
+
+	******/
+	return 0;
+}
